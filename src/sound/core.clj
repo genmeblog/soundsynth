@@ -22,13 +22,13 @@
 
 (.start dl)
 
-(.drain dl)
+(comment (.drain dl)
 
-(.stop dl)
+         (.stop dl)
 
-(.close dl)
+         (.close dl)
 
-(.available dl)
+         (.available dl))
 
 (def adsr-params (adsr/->ADSRParams 0.3 0.4 0.5 0.5))
 (def adsr (adsr/->ADSR adsr-params))
@@ -66,26 +66,14 @@
     (play-wave (wv/fft-interpolate (apply w (conj p 128))))))
 
 
-(do
+(comment 
   (play-wave (wv/integrate-signal (wv/sine 1)))
   (play-wave (wv/fft-interpolate (wv/integrate-signal (wv/sine 1 128))))
   )
 
-(play-wave (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 40 60))))))
+
+(def note 60) ;; middle C
+(def sample-id 39) ;; from 0-51
+(play-wave (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init sample-id note))))))
 
 (save-wave "a.wav" (->arr (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 40 60))))) adsr-vals))
-
-
-
-(play2 )
-
-
-(def min-time 1.0e-3)
-(def max-time 10.0)
-(def lambda-base (/ max-time min-time))
-
-;; 1000->0.01
-
-(/ (m/pow lambda-base -0.0) min-time)
-
-
