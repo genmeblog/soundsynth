@@ -237,13 +237,6 @@
 
 ;;
 
-^k/hiccup
-(line (noise))
-
-^k/hiccup
-(line (fft-interpolate (noise 128)))
-
-;;
 
 ^k/hiccup
 (line (wave 32))
