@@ -9,7 +9,8 @@
 (deftype Differentiator [^double previous ^double lp])
 
 (defn init
-  ^Differentiator [] (Differentiator. 0.0 0.0))
+  (^Differentiator [] (Differentiator. 0.0 0.0))
+  (^Differentiator [^double prev] (Differentiator. prev 0.0)))
 
 (defn process
   ^Differentiator [^Differentiator d ^double coeff ^double s]

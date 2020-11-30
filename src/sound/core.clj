@@ -5,10 +5,12 @@
             [sound.engine :as e]
             [sound.dsp :as dsp]
             [sound.adsr :as adsr]
+            [sound.filter :as filt]
             [clojure.java.io :as io])
   (:import [javax.sound.sampled AudioFormat AudioFileFormat$Type AudioSystem SourceDataLine AudioInputStream]
            [org.jtransforms.fft DoubleFFT_1D]
-           [sound.engine WaveTableEngine]))
+           [sound.engine WaveTableEngine]
+           [sound.filter SVF SVFResult]))
 
 (def af (AudioFormat. dsp/RATE 8 1 true true))
 
@@ -42,9 +44,9 @@
 
 (defn ->arr
   ([w adsr]
-   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 120.0 env x))) (wv/normalize w) (cycle adsr))))))
+   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 80.0 env x))) (wv/normalize w) (cycle adsr))))))
   ([w]
-   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 120.0 x))) (wv/normalize w)))))))
+   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 80.0 x))) (wv/normalize w)))))))
 
 (defn save-wave
   [filename w]
@@ -71,9 +73,19 @@
   (play-wave (wv/fft-interpolate (wv/integrate-signal (wv/sine 1 128))))
   )
 
+(play2 wv/analog-sine 2)
 
-(def note 60) ;; middle C
-(def sample-id 39) ;; from 0-51
-(play-wave (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init sample-id note))))))
+(defn apply-filter
+  [xs]
+  (reduce (fn [[f buff] sample]
+            (let [^SVF nf (filt/process f sample)]
+              [nf (conj buff (.lp ^SVFResult (.result nf)))])) [(filt/set-fq (filt/init) 0.1 100) []] xs))
+
+(def note 50) ;; middle C
+(def sample-id 30) ;; from 0-51
+(play-wave (second (apply-filter (take dsp/RATE (map #(.out ^WaveTableEngine %) (iterate e/render (e/init sample-id note)))))))
 
 (save-wave "a.wav" (->arr (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 40 60))))) adsr-vals))
+
+
+(apply-filter [-1 1])

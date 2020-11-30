@@ -22,7 +22,8 @@
 (defn init
   (^WaveTableEngine [] (init 0 60.0))
   (^WaveTableEngine [^long waveform ^double note]
-   (WaveTableEngine. (* waveform table-size) note 0.0 (diff/init) 0.0)))
+   (let [off (* waveform table-size)]
+     (WaveTableEngine. off note 0.0 (diff/init (read-wave off 0 0.0)) 0.0))))
 
 (defn render
   [^WaveTableEngine engine]

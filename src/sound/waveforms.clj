@@ -41,6 +41,19 @@
 
 ;;
 
+(defn- quadratic-sine-approx
+  ^double [^double v]
+  (let [phase (m/frac v)
+        hphase? (< phase 0.5)
+        x (- phase ^double (if hphase? 0.25 0.75))
+        v (- 1.0 (* 16.0 x x))]
+    (if hphase? v (- v))))
+
+(defn analog-sine
+  ([^double frequency] (analog-sine frequency WAVETABLE_SIZE))
+  ([^double frequency ^double size]
+   (map (fn [^long i] (quadratic-sine-approx (* frequency (/ i size)))) (range (int size)))))
+
 (defn sine
   ([^double frequency]
    (sine frequency WAVETABLE_SIZE))
@@ -66,6 +79,27 @@
                                    (v/div (dec n))
                                    (v/mult 0.5)))) (range n)))))
 
+(defn- exp-curve
+  ^double [^double x]
+  (/ (+ 3.0 (* x (+ -13.0 (* 5.0 x))))
+     (+ 3.0 x x)))
+
+(defn- analog-tri-approx
+  ^double [^double phase]
+  (let [x (+ 0.25 (m/frac phase))
+        x (- x (m/trunc x))
+        hx? (>= x 0.5)
+        x (+ x x)
+        x (- x (m/trunc x))]
+    (if hx?
+      (exp-curve x)
+      (- (exp-curve x)))))
+
+(defn analog-tri
+  ([f] (analog-tri f WAVETABLE_SIZE))
+  ([^double f ^double size]
+   (map (fn [^long i] (analog-tri-approx (* f (/ i size)))) (range (int size)))))
+
 (defn tri
   ([n] (tri n 1))
   ([n f] (tri n f WAVETABLE_SIZE))
@@ -80,6 +114,14 @@
   ([n] (tri-stack n WAVETABLE_SIZE))
   ([^long n ^double size]
    (reduce v/add (map (fn [^long i] (tri (+ 15 (* 5 n)) (+ i (/ n 3)) size)) (range n)))))
+
+(defn analog-saw
+  ([f] (analog-saw f WAVETABLE_SIZE))
+  ([^double f ^double size]
+   (map (fn [^long i] (let [x (+ 0.5 (* f (/ i size)))
+                           x (- x (m/trunc x))]
+                       (- (exp-curve x)))) (range (int size)))))
+
 
 (defn saw
   ([n] (saw n 1))

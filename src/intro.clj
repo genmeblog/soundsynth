@@ -2,7 +2,12 @@
   (:require [notespace.api :as api]
             [notespace.kinds :as k]
             [sound.waveforms :refer :all]
-            [sound.adsr :as adsr]))
+            [sound.adsr :as adsr]
+            [sound.engine :as e]
+            [sound.filter :as filt]
+            [fastmath.core :as m])
+  (:import [sound.engine WaveTableEngine]
+           [sound.filter SVF SVFResult]))
 
 ^k/hidden
 (defn line
@@ -17,6 +22,13 @@
                    :interpolate "monotone"} 
             :encoding {:x {:field "x" :type "quantitative"}
                        :y {:field "y" :type "quantitative"}}}])
+
+
+^k/hiccup
+(line (analog-sine 6))
+
+^k/hiccup
+(line (fft-interpolate (analog-sine 6 128)))
 
 
 ^k/hiccup
@@ -42,6 +54,13 @@
 ;;
 
 ^k/hiccup
+(line (analog-tri 3))
+
+^k/hiccup
+(line (fft-interpolate (analog-tri 3 128)))
+
+
+^k/hiccup
 (line (tri 3 2))
 
 ^k/hiccup
@@ -56,6 +75,13 @@
 (line (fft-interpolate (tri-stack 6 128)))
 
 ;;
+
+^k/hiccup
+(line (analog-saw 4))
+
+^k/hiccup
+(line (fft-interpolate (analog-saw 4 128)))
+
 
 ^k/hiccup
 (line (saw 6 1))
@@ -269,6 +295,38 @@
 ^k/hiccup
 (line adsr-vals)
 
+;;
+
+(def from-engine
+  (take 1000 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 30 40)))))
+
+^k/hiccup
+(line from-engine)
+
+(defn apply-filter
+  [xs]
+  (reduce (fn [[f buff] sample]
+            (let [^SVF nf (filt/process f sample)]
+              [nf (conj buff (.lp ^SVFResult (.result nf)))])) [(filt/set-fq (filt/init) 0.02 10) []] xs))
+
+^k/hiccup
+(line (second (apply-filter from-engine)))
+
 ^k/hiccup
 [:audio {:controls true}
  [:source {:src "../a.wav" :type "audio/wav"}]]
+
+^k/hiccup
+(line (m/sample (filt/TAN :dirty) 0 0.3 500))
+
+^k/hiccup
+(line (m/sample (filt/TAN :fast) 0 0.3 500))
+
+^k/hiccup
+(line (m/sample (filt/TAN :accurate) 0 0.3 500))
+
+^k/hiccup
+(line (m/sample (filt/TAN :exact) 0 0.3 500))
+
+;;
+
