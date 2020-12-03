@@ -1,5 +1,7 @@
 (ns sound.dsp
-  (:require [fastmath.core :as m]))
+  (:require [fastmath.core :as m]
+            [fastmath.vector :as v])
+  (:import [fastmath.vector Vec3]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -17,6 +19,13 @@
   (let [a (aget table integral)
         b (aget table (inc integral))]
     (m/mlerp a b fractional)))
+
+(defn interpolate
+  ^double [^doubles table ^double index ^long size]
+  (let [idx (* index size)
+        integral (int idx)
+        fractional (- idx integral)]
+    (interpolate-wave table integral fractional)))
 
 (defn interpolate-wave-hermite
   ^double [^shorts table ^long integral ^double fractional]
@@ -61,4 +70,35 @@
   ^double [^double midi-note]
   (* a0 0.25 (semitones->ratio (m/constrain (- midi-note 9.0) -128.0 127.0))))
 
+(defn- cosine-oscillator-init
+  [^double frequency]
+  (let [iir-coefficient (* 2.0 (m/cos (* m/TWO_PI frequency)))]
+    (Vec3. 0.5 (* 0.25 iir-coefficient) iir-coefficient)))
+
+(defn- cosine-oscillator-init-approximate
+  [^double frequency]
+  (let [frequency (- frequency 0.25)
+        sign (if (<= 0.0 frequency 0.5) -16.0 16.0)
+        ^double frequency (cond
+                            (neg? frequency) (- frequency)
+                            (> frequency 0.5) (- frequency 0.5)
+                            :else frequency)
+        iir-coefficient (* sign frequency (- 1.0 (* 2.0 frequency)))]
+    (Vec3. 0.5 (* 0.25 iir-coefficient) iir-coefficient)))
+
+;; x - y0
+;; y - y1
+;; z - iir-coefficient
+;; (+ y 0.5) - value
+
+(defn cosine-oscillator
+  [typ ^double frequency]
+  (let [^Vec3 osc-data (if (= typ :approximate)
+                         (cosine-oscillator-init-approximate frequency)
+                         (cosine-oscillator-init frequency))
+        next (fn [^Vec3 in]
+               (Vec3. (- (* (.z in) (.x in)) (.y in))
+                      (.x in)
+                      (.z in)))]
+    (iterate next (next osc-data))))
 

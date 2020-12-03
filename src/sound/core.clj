@@ -9,8 +9,13 @@
             [clojure.java.io :as io])
   (:import [javax.sound.sampled AudioFormat AudioFileFormat$Type AudioSystem SourceDataLine AudioInputStream]
            [org.jtransforms.fft DoubleFFT_1D]
-           [sound.engine WaveTableEngine]
+           [sound.engine WaveTableEngine WaveParams]
            [sound.filter SVF SVFResult]))
+
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
+(m/use-primitive-operators)
+
 
 (def af (AudioFormat. dsp/RATE 8 1 true true))
 
@@ -32,60 +37,46 @@
 
          (.available dl))
 
-(def adsr-params (adsr/->ADSRParams 0.3 0.4 0.5 0.5))
-(def adsr (adsr/->ADSR adsr-params))
+;;
 
-(/ 44100 4)
+;; CHANGE ME!!!
+(def sound-patch (e/->WaveParams 19 40))
+(def level 0.7)
 
-(def adsr-vals
-  (let [a (take 5000 (iterate #(adsr/process % true) adsr))
-        b (take (- 11025 5000) (iterate #(adsr/process % false) (last a)))]
-    (map #(.env ^sound.adsr.ADSR %) (concat a b))))
+(def playing? (atom false))
 
-(defn ->arr
-  ([w adsr]
-   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 80.0 env x))) (wv/normalize w) (cycle adsr))))))
-  ([w]
-   (byte-array (take dsp/RATE (cycle (map (fn [^double x ^double env] (short (* 80.0 x))) (wv/normalize w)))))))
+(defn play
+  []
+  (try
+    (let [size 16
+          buffer (byte-array size)]
+      (loop [engine (e/init sound-patch)]
+        (if @playing?
+          (if (> (.available ^SourceDataLine dl) size)
+            (let [curr-engine (loop [idx (int 0)
+                                     curr-engine engine]
+                                (if (< idx size)
+                                  (let [^WaveTableEngine new-engine (e/render curr-engine sound-patch)]
+                                    (aset ^bytes buffer idx
+                                          (byte (m/constrain (* ^double level 127.0 (.out new-engine)) -128.0 127.0)))
+                                    (recur (inc idx) new-engine))
+                                  curr-engine))]
+              (.write ^SourceDataLine dl buffer 0 size)
+              (recur curr-engine))
+            (do
+              ;; (println "waiting")
+              (Thread/sleep 50)
+              (recur engine)))
+          (println :stopped))))
+    (catch Exception e (println :exception))))
 
-(defn save-wave
-  [filename w]
-  (let [f (io/file filename)
-        is (AudioInputStream. (java.io.ByteArrayInputStream. w) af dsp/RATE)]
-    (AudioSystem/write is AudioFileFormat$Type/WAVE f)
-    (.close is)))
+(defn toggle-playing
+  []
+  (if-not @playing?
+    (do
+      (reset! playing? true)
+      (future (play)))
+    (reset! playing? false)))
 
-(defn play-wave
-  [w]
-  (let [n (->arr w adsr-vals)]
-    (.write ^SourceDataLine dl n 0 22050)
-    (.write ^SourceDataLine dl n 22050 22050)))
+(toggle-playing)
 
-(defn play2
-  [w & p]
-  (let [p (vec p)]
-    (play-wave (apply w p))
-    (play-wave (wv/fft-interpolate (apply w (conj p 128))))))
-
-
-(comment 
-  (play-wave (wv/integrate-signal (wv/sine 1)))
-  (play-wave (wv/fft-interpolate (wv/integrate-signal (wv/sine 1 128))))
-  )
-
-(play2 wv/analog-sine 2)
-
-(defn apply-filter
-  [xs]
-  (reduce (fn [[f buff] sample]
-            (let [^SVF nf (filt/process f sample)]
-              [nf (conj buff (.lp ^SVFResult (.result nf)))])) [(filt/set-fq (filt/init) 0.1 100) []] xs))
-
-(def note 50) ;; middle C
-(def sample-id 30) ;; from 0-51
-(play-wave (second (apply-filter (take dsp/RATE (map #(.out ^WaveTableEngine %) (iterate e/render (e/init sample-id note)))))))
-
-(save-wave "a.wav" (->arr (take dsp/RATE (drop 100 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 40 60))))) adsr-vals))
-
-
-(apply-filter [-1 1])

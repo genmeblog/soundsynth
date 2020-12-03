@@ -4,7 +4,8 @@
             [fastmath.vector :as v]
             [fastmath.signal :as sig]
             [fastmath.random :as r]
-            [fastmath.interpolation :as i])
+            [fastmath.interpolation :as i]
+            [sound.dsp :as dsp])
   (:import [org.jtransforms.fft DoubleFFT_1D]))
 
 (set! *warn-on-reflection* true)
@@ -38,6 +39,8 @@
                 arr)) arr (range 0 (alength arr) 2))
     (.realInverse fft-out arr true)
     arr))
+
+
 
 ;;
 
@@ -300,12 +303,130 @@
                 (v/mult 0.7))]
      (v/add (v/add f1 f2) f3))))
 
+;; fastmath
+
+(defmethod sig/oscillator :noise1 [_ ^double f ^double a ^double p]
+  (let [n (r/fbm-noise {:noise-type :simplex
+                        :octaves 2
+                        :normalize? false
+                        :seed 1337})]
+    (fn ^double [^double x]
+      (* a ^double (n (* (+ p x) f) 1.23456789)))))
+
+(defmethod sig/oscillator :noise2 [_ ^double f ^double a ^double p]
+  (let [n (r/fbm-noise {:noise-type :value
+                        :octaves 2
+                        :interpolation :none
+                        :normalize? false
+                        :seed 1337})]
+    (fn ^double [^double x]
+      (* a ^double (n (* (+ p x) f) 1.23456789)))))
+
+(defmethod sig/oscillator :noise3 [_ ^double f ^double a ^double p]
+  (let [n (r/billow-noise {:noise-type :value
+                           :octaves 2
+                           :interpolation :linear
+                           :normalize? false
+                           :seed 1337})]
+    (fn ^double [^double x]
+      (* a ^double (n (* (+ p x) f) 1.23456789)))))
+
+(defmethod sig/oscillator :noise4 [_ ^double f ^double a ^double p]
+  (let [n (r/ridgedmulti-noise {:noise-type :value
+                                :octaves 2
+                                :interpolation :hermite
+                                :normalize? false
+                                :seed 1337})]
+    (fn ^double [^double x]
+      (* a ^double (n (* (+ p x) f) 1.23456789)))))
+
 (defn signal
   ([type freq] (signal type freq WAVETABLE_SIZE))
   ([type ^double freq ^double size]
    (let [t (sig/oscillator type freq 1 0)]
      (map (fn [^long i]
             (t (/ i size))) (range (int size))))))
+
+;; braids
+
+(def gains (conj (map (fn [^double x]
+                        (m/exp (* 0.184 x))) (range 1 16)) 0.0))
+
+(def formant-square-256 (concat (take 128 (cycle gains))
+                                (take 128 (cycle (map (fn [^double v] (- v)) gains)))))
+
+(def formant-square-128 (take-nth 2 formant-square-256))
+
+
+(def formant-sine-256
+  (mapcat (fn [^double x]
+            (map (fn [^double g]
+                   (* g 4.0 x)) gains))
+          (map (fn [^long i]
+                 (m/sin (* m/TWO_PI (/ i 16.0)))) (range 16))))
+
+(def formant-sine-128 (take-nth 2 formant-sine-256))
+
+;;
+
+(defn wrap [^long size] (map (fn [^long i] (mod (+ i (/ size 2)) size)) (range (inc size))))
+(defn step [^long size] (map (fn [^long i] (mod (+ i (/ size 32)) size)) (range (inc size))))
+(defn fill [^long size] (map (fn [^long i] (mod i size)) (range (inc size))))
+
+(defn- bandlimited-comb-
+  ([^long zone ^long size]
+   (let [f0 (if (>= zone 14)
+              (dec (/ dsp/RATE 2.0))
+              (min (/ dsp/RATE 2.0) (* 440.0 (m/pow 2.0 (/ (- (+ 18.0 (* 8.0 zone)) 69.0) 12.0)))))
+         period (/ dsp/RATE f0)
+         m (inc (* 2.0 (m/floor (/ period 2.0))))
+         pulse (mapv (fn [^long i]
+                       (if (zero? i)
+                         1.0
+                         (let [i (/ i (double size))]
+                           (/ (m/sin (* m/PI i m))
+                              (+ 1.0e-9 (* m (m/sin (* m/PI i)))))))) (range (/ size -2) (/ size 2)))]
+     (mapv #(pulse %) (fill size)))))
+
+(defn bandlimited-comb
+  ([^long zone] (bandlimited-comb zone WAVETABLE_SIZE))
+  ([^long zone ^long size]
+   (let [pulse (bandlimited-comb- zone size)]
+     (butlast pulse))))
+
+(defn bandlimited-square
+  ([^long zone] (bandlimited-square zone WAVETABLE_SIZE))
+  ([^long zone ^long size]
+   (let [pulse (bandlimited-comb- zone size)]
+     (butlast (reductions m/fast+ (map-indexed (fn [^long i ^long w]
+                                                 (- ^double (pulse i) ^double (pulse w))) (wrap size)))))))
+
+(defn bandlimited-triangle
+  ([^long zone] (bandlimited-triangle zone WAVETABLE_SIZE))
+  ([^long zone ^long size]
+   (let [pulse (bandlimited-comb- zone size)
+         square (reductions m/fast+ (map-indexed (fn [^long i ^long w]
+                                                   (- ^double (pulse i) ^double (pulse w))) (wrap size)))
+         smean (stats/mean square)]
+     (butlast (map (fn [^double v]
+                     (/ (- v) size)) (reductions m/fast+ (map (fn [^double s]
+                                                                (- s smean)) (reverse square))))))))
+
+(defn bandlimited-nes-triangle
+  ([^long zone] (bandlimited-nes-triangle zone WAVETABLE_SIZE))
+  ([^long zone ^long size]
+   (let [pulse (bandlimited-comb- zone size)
+         steps (step size)
+         nes-square (first (reduce (fn [[nes-triangle curr-pulse] ^long i]
+                                     (let [m (if (< i 16) 1.0 -1.0)]
+                                       [(map (fn [^double x ^double y]
+                                               (+ y (* m x))) curr-pulse nes-triangle)
+                                        (mapv #(curr-pulse %) steps)])) [(repeat (inc size) 0.0)
+                                                                         pulse] (range 32)))]
+     (butlast (map (fn [^double v] (- v))
+                   (reductions m/fast+ nes-square))))))
+
+;;
 
 (defn slurp-bytes
   "Slurp the bytes from a slurpable thing"
@@ -345,4 +466,3 @@
                                                           (map pair [2 3 4 5 6 7 8 9 10 12 16 24])
                                                           (map drawbars bars1)
                                                           (map drawbars bars2)]))))
-
