@@ -16,21 +16,21 @@
   ^double [^long off ^long phase-integral ^double phase-fractional]
   (dsp/interpolate-wave-hermite wv/wavetable (+ off phase-integral) phase-fractional))
 
-(deftype WaveTableEngine [^double phase ^Differentiator diff-out ^double out])
+(defrecord WavetableEngineParams [^long off ^double frequency])
 
-(deftype WaveParams [^long off ^double frequency])
+(defn init-params
+  ^WavetableEngineParams [^long waveform ^double note]
+  (WavetableEngineParams. (* waveform table-size) (dsp/note->frequency note)))
 
-(defn ->WaveParams
-  ^WaveParams [^long waveform ^double note]
-  (WaveParams. (* waveform table-size) (dsp/note->frequency note)))
+(defrecord WavetableEngine [^double phase ^Differentiator diff-out ^double out])
 
 (defn init
-  (^WaveTableEngine [] (WaveTableEngine. 0.0 (diff/init 0.0) 0.0))
-  (^WaveTableEngine [^WaveParams p]
-   (WaveTableEngine. 0.0 (diff/init (read-wave (.off p) 0 0.0)) 0.0)))
+  (^WavetableEngine [] (WavetableEngine. 0.0 (diff/init 0.0) 0.0))
+  (^WavetableEngine [^WavetableEngineParams p]
+   (WavetableEngine. 0.0 (diff/init (read-wave (.off p) 0 0.0)) 0.0)))
 
 (defn render
-  [^WaveTableEngine engine ^WaveParams params]
+  [^WavetableEngine engine ^WavetableEngineParams params]
   (let [f0 (.frequency params)
         gain (* (/ (* f0 131072.0)) (- 0.95 f0))
         cutoff (min 1.0 (* f0 table-size-f))
@@ -41,10 +41,9 @@
         p-fractional (- p p-integral)
         mix (read-wave (.off params) p-integral p-fractional)
         ndiff (diff/process (.diff-out engine) cutoff mix)]
-    (WaveTableEngine. phase
+    (WavetableEngine. phase
                       ndiff
                       (* gain (.lp ^Differentiator ndiff)))))
 
-;; (map #(.out ^WaveTableEngine %) (take 250 (iterate render (init))))
-
-
+(let [p (init-params 1 50)]
+  (take 5 (iterate #(render % p) (init p))))

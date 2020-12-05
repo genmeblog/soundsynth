@@ -6,7 +6,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 (m/use-primitive-operators)
 
-(deftype Differentiator [^double previous ^double lp])
+(defrecord Differentiator [^double previous ^double lp])
 
 (defn init
   (^Differentiator [] (Differentiator. 0.0 0.0))
