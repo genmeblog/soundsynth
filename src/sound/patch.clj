@@ -5,21 +5,41 @@
             [sound.sequencer :as sr]
             [sound.filter :as f]))
 
+;; Lost Woods from Zelda - Koji Kondo
+
 ;; sequencer 1
+
+;; 300 BPM with gate open 40% of time between triggers
 (def clock-1 (clock/init-params 300 0.4))
 
+;; use waveforms 10 and 20, interpolate them with 30-70% for phase modulation
 (def phase-oscillator-1 (o/init-params 10 20 0.7))
+
+;; phase modulation uses the original sequencer pitch which can be changes (below, go down 12 semitones with some slight detune)
 (def phase-note-shift -12.05)
+
+;; main oscillator, waveforms 15 and 100 are used, interpolated 30-70%, amount of phase modulation = 0.01 
 (def oscillator-1 (o/init-params 15 100 0.7 0.01))
+
+;; attack-delay-sustain-release for amplitude
 (def adsr-oscillator-1 (adsr/init-params 0.0 0.6 0.7 0.57))
 
+;; ADSR for filter
 (def adsr-filter-1 (adsr/init-params 0.25 0.6 0.9 0.57))
+
+;; ADSR amount
 (def filter-amount-1 8)
+
+;; filter frequency (probably ratio pitch / rate - haven't figure it out)
 (def filter-freq-1 0.01)
+
+;; filter resonance
 (def filter-q-1 5.0)
 
+;; track level
 (def level-1 0.8)
 
+;; score
 (def sequence-1 (sr/init-sequence :F3  :A3  :B3  :rst
                                   :F3  :A3  :B3  :rst
                                   :F3  :A3  :B3  :E4

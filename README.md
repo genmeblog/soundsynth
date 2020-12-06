@@ -20,6 +20,13 @@ Structure of the code is created to make C++ translation as easy as possible. Th
 
 Implementation is highly based on [Mutable Instruments](https://mutable-instruments.net/) source code.
 
+## Sound quality
+
+* Sample rate: 44100.0Hz
+* Bit depth: 8 (-128 to 127)
+* mono
+* 3 independent tracks (sequencers) mixed together.
+
 ## License
 
 Copyright © 2020 Generateme
