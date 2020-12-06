@@ -7,7 +7,7 @@
 
 ;; Lost Woods from Zelda - Koji Kondo
 
-;; sequencer 1
+;; sequencer 1 - melody
 
 ;; 300 BPM with gate open 40% of time between triggers
 (def clock-1 (clock/init-params 300 0.4))
@@ -18,7 +18,7 @@
 ;; phase modulation uses the original sequencer pitch which can be changes (below, go down 12 semitones with some slight detune)
 (def phase-note-shift -12.05)
 
-;; main oscillator, waveforms 15 and 100 are used, interpolated 30-70%, amount of phase modulation = 0.01 
+;; main oscillator, waveforms 15 and 100 are used, interpolated 30-70%, amount of phase modulation = 0.01
 (def oscillator-1 (o/init-params 15 100 0.7 0.01))
 
 ;; attack-delay-sustain-release for amplitude
@@ -31,13 +31,13 @@
 (def filter-amount-1 8)
 
 ;; filter frequency (probably ratio pitch / rate - haven't figure it out)
-(def filter-freq-1 0.01)
+(def filter-freq-1 0.008)
 
 ;; filter resonance
 (def filter-q-1 5.0)
 
 ;; track level
-(def level-1 0.8)
+(def level-1 0.6)
 
 ;; score
 (def sequence-1 (sr/init-sequence :F3  :A3  :B3  :rst
@@ -50,7 +50,7 @@
                                   :rst :rst :rst :rst))
 
 
-;; sequencer 2
+;; sequencer 2 - bass line
 (def clock-2 (clock/init-params 150 0.7))
 (def oscillator-2 (o/init-params 20 90 0.5))
 (def adsr-oscillator-2 (adsr/init-params 0.3 0.01 0.7 0.45))
@@ -60,7 +60,7 @@
 (def filter-freq-2 0.25)
 (def filter-q-2 10.0)
 
-(def level-2 0.8)
+(def level-2 1.0)
 
 (def sequence-2 (sr/init-sequence :F2 :F2
                                   :F2 :F3
@@ -71,7 +71,7 @@
                                   :E2 :E2
                                   :E2 :C3))
 
-;; sequencer 3
+;; sequencer 3 - accompaniment
 (def clock-3 (clock/init-params 300 0.3))
 (def oscillator-3 (o/init-params 10 100 0.5))
 (def adsr-oscillator-3 (adsr/init-params 0.05 0.5 0.9 0.4))
@@ -81,7 +81,7 @@
 (def filter-freq-3 0.4)
 (def filter-q-3 10.0)
 
-(def level-3 0.3)
+(def level-3 0.5)
 
 (def sequence-3 (sr/init-sequence :A5 :C5 :D5 :C5
                                   :A5 :C5 :D5 :C5
