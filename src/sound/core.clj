@@ -22,7 +22,7 @@
 (defn play
   [^SourceDataLine dl]
   (try
-    (let [size 16
+    (let [size 256
           buffer (byte-array size)]
       (loop [engine (e/engine)]
         (if @playing?
@@ -45,7 +45,7 @@
     (catch Exception e (println e))))
 
 (def af (AudioFormat. dsp/RATE 8 1 true true))
-(def ^SourceDataLine dl (AudioSystem/getSourceDataLine af))
+(defonce ^SourceDataLine dl (AudioSystem/getSourceDataLine af))
 
 (defn toggle-playing
   []
