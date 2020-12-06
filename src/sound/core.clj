@@ -15,7 +15,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 (m/use-primitive-operators)
 
-(def playing? (atom false))
+(defonce playing? (atom false))
 
 (def level 0.9)
 
