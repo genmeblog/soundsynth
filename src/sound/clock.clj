@@ -27,7 +27,7 @@
 
 (defn init
   ^Clock []
-  (Clock. 0 true false))
+  (Clock. -1 true false))
 
 (defn process
   "Calculate next clock state:
@@ -37,9 +37,12 @@
   - increment counter"
   ^Clock [^Clock cl ^ClockParams params]
   (let [ns (inc (.current-sample cl))]
-    (condp = ns
-      1 (Clock. ns false (.gate-down cl))
-      (.step params) (Clock. 0 true false)
-      (.gate-time params) (Clock. ns (.trigger cl) true)
-      (Clock. ns (.trigger cl) (.gate-down cl)))))
+    (cond
+      (= ns 1) (Clock. ns false (.gate-down cl))
+      (>= ns (.step params)) (Clock. 0 true false)
+      (= ns (.gate-time params)) (Clock. ns (.trigger cl) true)
+      :else (Clock. ns (.trigger cl) (.gate-down cl)))))
 
+(defn resting
+  [^Clock clock]
+  (Clock. (.current-sample clock) false true))

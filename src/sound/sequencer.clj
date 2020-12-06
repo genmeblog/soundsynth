@@ -1,6 +1,6 @@
 (ns sound.sequencer
-  (:require [sound.clock]
-            [fastmath.core :as m])
+  (:require [fastmath.core :as m]
+            [sound.clock :as clock])
   (:import [sound.clock Clock]))
 
 (set! *warn-on-reflection* true)
@@ -12,7 +12,6 @@
 (def offsets    [24  25  25  26  27  27  28  29  30  30  31  32  32  33  34  34  35])
 
 (def ^:const ^byte REST -1)
-(def ^:const ^byte LAST -2)
 
 (def note->midi (-> (->> (range -1 8 1)
                          (mapcat (fn [^long octave]
@@ -20,26 +19,26 @@
                                           [(keyword (str note (inc octave) sf)) (+ offset (* 12 octave))])
                                         notes sharp-flat offsets)))
                          (into {}))
-                    (assoc :rest REST
-                           :last LAST)))
+                    (assoc :rst REST)))
 
 (defn init-sequence
-  [notes]
+  [& notes]
   (byte-array (map note->midi notes)))
 
-(defrecord Sequencer [^long idx ^long note])
+(defrecord Sequencer [^long idx ^long note ^Clock clock])
 
 (defn init
-  []
-  (Sequencer. 0 0))
+  [clock]
+  (Sequencer. -1 0 clock))
 
 (defn process
-  [^Sequencer sequencer ^Clock clock ^bytes notes]
-  (if (.trigger clock)
-    (let [nidx (mod (inc (.idx sequencer)) (alength notes))
-          note (aget notes nidx)]
-      (condp = note
-        REST (Sequencer. nidx REST)
-        LAST (Sequencer. nidx (.note sequencer))
-        :else (Sequencer. nidx note)))
-    sequencer))
+  [^Sequencer sequencer ^bytes notes clock-params]
+  (let [^Clock nclock (clock/process (.clock sequencer) clock-params)
+        len (alength notes)]
+    (if (and (pos? len) (.trigger nclock))
+      (let [nidx (mod (inc (.idx sequencer)) len)
+            note (aget notes nidx)]
+        (if (= note REST)
+          (Sequencer. nidx (.note sequencer) (clock/resting nclock))
+          (Sequencer. nidx note nclock)))
+      (Sequencer. (.idx sequencer) (.note sequencer) nclock))))

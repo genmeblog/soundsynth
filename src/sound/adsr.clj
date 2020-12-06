@@ -28,13 +28,13 @@
   (ADSR. true 0.0))
 
 (defn process
-  ^ADSR [^ADSR adsr ^ADSRParams params ^Clock cl]
-  (if (.trigger cl)
+  ^ADSR [^ADSR adsr ^ADSRParams params ^Clock clock]
+  (if (.trigger clock)
     (init)
-    (let [target (if-not (.gate-down cl)
+    (let [target (if-not (.gate-down clock)
                    (if (.attacking? adsr) 1.2 (.sustain params))
                    -0.01)
-          lambda (if-not (.gate-down cl)
+          lambda (if-not (.gate-down clock)
                    (if (.attacking? adsr)
                      (.attack-lambda params)
                      (.decay-lambda params))
@@ -42,5 +42,5 @@
           env (max 0.0 (+ (.env adsr) (* (- target (.env adsr))
                                          lambda dsp/REV_RATE)))
           attacking? (if (> env 1.0) false (.attacking? adsr))
-          attacking? (if-not (.gate-down cl) attacking? false)]
+          attacking? (if-not (.gate-down clock) attacking? false)]
       (ADSR. attacking? env))))

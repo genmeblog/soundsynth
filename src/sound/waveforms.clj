@@ -461,8 +461,4 @@
     (drop (- n 4) x)))
 
 (def wavetable
-  (short-array (mapcat integrate-signal (mapcat identity [(map sine [1 2 3 4 5 6 7 8 9 10 12 14 16 20 24 28])
-                                                          (map comb [2 3 5 8 13 21 34 55])
-                                                          (map pair [2 3 4 5 6 7 8 9 10 12 16 24])
-                                                          (map drawbars bars1)
-                                                          (map drawbars bars2)]))))
+  (short-array (mapcat integrate-signal (mapcat identity [(map (comp fft-interpolate wave) (range 256))]))))
