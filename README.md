@@ -27,9 +27,18 @@ Implementation is highly based on [Mutable Instruments](https://mutable-instrume
 * mono
 * 3 independent tracks (sequencers) mixed together.
 
+## TODO
+
+* echo / delay
+* resonator (implemented, not tested)
+* waveshapers
+* build full collection of waveforms
+* write blog post about this implementation
+* translate to C++
+
 ## License
 
-Copyright © 2020 Generateme
+Copyright © 2020 GenerateMe
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
