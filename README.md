@@ -1,4 +1,4 @@
-# Sound synthesis
+# Sound synthesis from the scratch
 
 Waveform based sound synthesis engine. It's a proof of concept helping implementing target synthesizer on STM32 ARM processor.
 
