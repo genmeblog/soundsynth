@@ -16,7 +16,9 @@ To play a sound load and run `sound.core` (use `toggle-playing` to start/stop so
 
 ## Implementation notes
 
-To allow easy translation to C++ every engine contains custom records (created by `defrecord`) separately for configuration and state. 
+Structure of the code is created to make C++ translation as easy as possible. This requires semi-object programming - custom types (records) and functions operating on them.
+
+Implementation is highly based on [Mutable Instruments](https://mutable-instruments.net/) source code.
 
 ## License
 
