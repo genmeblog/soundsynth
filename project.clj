@@ -5,4 +5,5 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [generateme/fastmath "2.0.5"]
-                 [com.github.wendykierp/JTransforms "3.1"]])
+                 [com.github.wendykierp/JTransforms "3.1"]]
+  :profiles {:dev {:dependencies [[scicloj/notespace "3-alpha3-SNAPSHOT"]]}})
