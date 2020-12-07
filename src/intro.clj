@@ -2,15 +2,16 @@
   (:require [notespace.api :as api]
             [notespace.kinds :as k]
             [sound.waveforms :refer :all]
-            [sound.waveshapers :as ws]
+            [sound.oscillator :as o]
+            [sound.waveshaper :as ws]
             [sound.adsr :as adsr]
             [sound.engine :as e]
             [sound.filter :as filt]
-            [sound.resonator :as res]
+            ;; [sound.resonator :as res]
             [fastmath.core :as m]
             [sound.dsp :as dsp])
-  (:import [sound.engine WaveTableEngine]
-           [sound.filter SVF SVFResult]))
+  (:import [sound.oscillator Oscillator]
+           [sound.filter SVF]))
 
 ^k/hidden
 (defn line
@@ -323,85 +324,13 @@
 ^k/hiccup
 (line (fft-interpolate (bandlimited-nes-triangle 12 128)))
 
+;;
 
 ^k/hiccup
-(line ws/smooth-bipolar-fold)
-
-^k/hiccup
-(line (let [s (normalize (sine 2))
-            v (map #(* 1 (ws/smooth-bipolar-fold (int (m/norm % -1.0 1.0 0 1024)))) s)]
-        (map m/fast+ s v)))
-
-^k/hiccup
-(line ws/bipolar-fold)
-
-^k/hiccup
-(line (let [s (normalize (sine 2))
-            v (map #(* 1 (ws/bipolar-fold (int (m/norm % -1.0 1.0 0 1024)))) s)]
-        ;; (map m/fast+ s v)
-        v
-        ))
-
-^k/hiccup
-(line ws/unipolar-fold)
-
-^k/hiccup
-(line (let [s (normalize (sine 2))
-            v (map #(ws/unipolar-fold (int (m/norm (m/abs %) 0.0 1.0 0 1024))) s)]
-        (map m/fast* s v)))
-
-^k/hiccup
-(line ws/linear-audio)
-
-^k/hiccup
-(line (let [fold ws/linear-audio
-            size (dec (count fold))
-            s (normalize (sine 2))
-            v (map #(fold (int (m/norm % -1.0 1.0 0 size))) s)]
-        (map m/fast* s v)))
-
-
-^k/hiccup
-(line ws/sin-audio)
-
-^k/hiccup
-(line (let [fold ws/sin-audio
-            size (dec (count fold))
-            s (normalize (sine 2))
-            v (map #(fold (int (m/norm % -1.0 1.0 0 size))) s)]
-        (map m/fast+ s v)))
-
-^k/hiccup
-(line ws/tan-audio)
-
-^k/hiccup
-(line (let [fold ws/tan-audio
-            size (dec (count fold))
-            s (normalize (sine 2))
-            v (map #(fold (int (m/norm % -1.0 1.0 0 size))) s)]
-        (map m/fast+ s v)))
-
-
-^k/hiccup
-(line ws/inverse-sin-audio)
-
-^k/hiccup
-(line (let [fold ws/inverse-sin-audio
-            size (dec (count fold))
-            s (normalize (sine 2))
-            v (map #(fold (int (m/norm % -1.0 1.0 0 size))) s)]
-        (map m/fast+ s v)))
-
-^k/hiccup
-(line ws/inverse-tan-audio)
-
-^k/hiccup
-(line (let [fold ws/inverse-tan-audio
-            size (dec (count fold))
-            s (normalize (sine 2))
-            v (map #(fold (int (m/norm % -1.0 1.0 0 size))) s)]
-        (map m/fast+ s v)))
-
+(line (let [s (normalize (tri 2))
+            s2 (normalize (signal :noise3 6))
+            v (map #(nth s2 (int (m/norm % -1.0 1.0 0 255))) s)]
+        (normalize (map #(m/mlerp %1 %2 0.9) s v))))
 
 ;;
 
@@ -425,37 +354,6 @@
 
 ;;
 
-(def adsr-params (adsr/->ADSRParams 0.3 0.2 0.5 0.3))
-(def adsr (adsr/->ADSR adsr-params))
-
-(def adsr-vals
-  (let [a (take 5000 (iterate #(adsr/process % true) adsr))
-        b (take 10000 (iterate #(adsr/process % false) (last a)))]
-    (map #(.env ^sound.adsr.ADSR %) (concat a b))))
-
-^k/hiccup
-(line adsr-vals)
-
-;;
-
-(def from-engine
-  (take 1000 (map #(.out ^WaveTableEngine %) (iterate e/render (e/init 30 40)))))
-
-^k/hiccup
-(line from-engine)
-
-(defn apply-filter
-  [xs]
-  (reduce (fn [[f buff] sample]
-            (let [^SVF nf (filt/process f sample)]
-              [nf (conj buff (.lp ^SVFResult (.result nf)))])) [(filt/set-fq (filt/init) 0.02 10) []] xs))
-
-^k/hiccup
-(line (second (apply-filter from-engine)))
-
-^k/hiccup
-[:audio {:controls true}
- [:source {:src "../a.wav" :type "audio/wav"}]]
 
 ^k/hiccup
 (line (m/sample (filt/TAN :dirty) 0 0.3 500))
@@ -472,7 +370,7 @@
 ;;
 
 ^k/hiccup
-(line res/lut-stiffness)
+(line (ws/generate-shaper (* 257 260) (* 256 260) 0.5))
 
 ^k/hiccup
-(line (map #(+ (.y %) 0.5) (take 1000 (dsp/cosine-oscillator :approximate (/ 100.0 dsp/RATE)))))
+(line (map (partial ws/process (ws/init-params 257 256 0.5 0.2 false)) (sine 3)))

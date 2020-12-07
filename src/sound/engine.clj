@@ -6,7 +6,8 @@
             [sound.patch :as patch]
             [sound.filter :as f]
             [sound.dsp :as dsp]
-            [fastmath.core :as m])
+            [fastmath.core :as m]
+            [sound.waveshaper :as ws])
   (:import [sound.sequencer Sequencer]
            [sound.oscillator Oscillator]
            [sound.adsr ADSR]
@@ -58,12 +59,14 @@
          ^Oscillator phase-oscillator-1 (o/render (.phase-oscillator-1 e) patch/phase-oscillator-1 (+ note ^double patch/phase-note-shift))
          ^Oscillator noscillator-1 (o/render (.oscillator-1 e) patch/oscillator-1 note (.out phase-oscillator-1))
 
+         osc-sample-shaped (ws/process patch/waveshaper-1 (.out noscillator-1))
+         
          ^ADSR nadsr-filter-1 (adsr/process (.adsr-filter-1 e) patch/adsr-filter-1 (.clock nsequencer-1))
          ^SVF nfilter-1 (f/process (.filter-1 e) (f/set-fq (* (inc (* (.env nadsr-filter-1) ^double patch/filter-amount-1))
-                                                              ^double patch/filter-freq-1) patch/filter-q-1) (.out noscillator-1))
+                                                              ^double patch/filter-freq-1) patch/filter-q-1) osc-sample-shaped)
          
-         ^ADSR nadsr-oscillator-1 (adsr/process (.adsr-oscillator-1 e) patch/adsr-oscillator-1 (.clock nsequencer-1))         
-         out-1 (* (.env nadsr-oscillator-1) (.lp nfilter-1))
+         ^ADSR nadsr-oscillator-1 (adsr/process (.adsr-oscillator-1 e) patch/adsr-oscillator-1 (.clock nsequencer-1))
+         out-1 (* (.env nadsr-oscillator-1) (.hp nfilter-1))
 
          ;; 2
          ^Sequencer nsequencer-2 (sr/process (.sequencer-2 e) patch/sequence-2 patch/clock-2)
@@ -92,7 +95,7 @@
          
          out (dsp/ONE-POLE (+ (* ^double patch/level-1 out-1)
                               (* ^double patch/level-2 out-2)
-                              (* ^double patch/level-3 out-3)) (.prev-out e) 0.2)]
+                              (* ^double patch/level-3 out-3)) (.prev-out e) 0.15)]
      (Engine. (.out e) out
               noscillator-1 phase-oscillator-1 nadsr-oscillator-1 nadsr-filter-1 nfilter-1 nsequencer-1
               noscillator-2 nadsr-oscillator-2 nadsr-filter-2 nfilter-2 nsequencer-2

@@ -448,7 +448,6 @@
    (let [i (i/monotone (range (count xs)) xs)]
      (m/sample i 0 (count xs) cnt))))
 
-
 (def ^:const ^double scaler (/ (* 4.0 32768.0) WAVETABLE_SIZE))
 
 (defn integrate-signal
@@ -461,4 +460,12 @@
     (drop (- n 4) x)))
 
 (def wavetable
-  (short-array (mapcat integrate-signal (mapcat identity [(map (comp fft-interpolate wave) (range 256))]))))
+  (short-array (mapcat integrate-signal (mapcat identity [(map (comp fft-interpolate wave) (range 256))
+                                                          (map sine [1 2 3 4 5 8 12 16 32])]))))
+
+(def ^:const ^int table-size 260)
+(def ^:const ^double table-size-f 256.0)
+
+(defn read-wave
+  ^double [^long off ^long phase-integral ^double phase-fractional]
+  (dsp/interpolate-wave-hermite wavetable (+ off phase-integral) phase-fractional))

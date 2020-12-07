@@ -22,20 +22,21 @@
 (defn play
   [^SourceDataLine dl]
   (try
-    (let [size 256
+    (let [size 256 ;; local buffer size
           buffer (byte-array size)]
       (loop [engine (e/engine)]
         (if @playing?
-          (if (> (.available ^SourceDataLine dl) size)
+          ;; produce new samples only when there is space to store it, wait a little bit otherwise
+          (if (> (.available ^SourceDataLine dl) size) 
             (let [curr-engine (loop [idx (int 0)
                                      curr-engine engine]
                                 (if (< idx size)
                                   (let [^Engine new-engine (e/engine curr-engine)]
                                     (aset ^bytes buffer idx
-                                          (byte (m/constrain (* ^double level 127.5 (.out new-engine)) -128.0 127.0)))
+                                          (byte (m/round-even (m/constrain (* ^double level 127.5 (.out new-engine)) -128.0 127.0))))
                                     (recur (inc idx) new-engine))
                                   curr-engine))]
-              (.write ^SourceDataLine dl buffer 0 size)
+              (.write ^SourceDataLine dl buffer 0 size) ;; feed sound to data line
               (recur curr-engine))
             (do
               ;; (println "waiting")
@@ -63,3 +64,8 @@
 
 (toggle-playing)
 
+(def song (map #(byte (m/round-even (m/constrain (* ^double level 127.5 (.out ^Engine %)) -128.0 127.0))) (iterate e/engine (e/engine))))
+
+#_(with-open [w (io/output-stream "song.raw")]
+    (doseq [b (take (int (* 20 dsp/RATE)) song)]
+      (.write w (byte b))))

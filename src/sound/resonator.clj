@@ -4,7 +4,7 @@
             [sound.dsp :as dsp]
             [fastmath.vector :as v])
   (:import [fastmath.vector Vec3]
-           [sound.filter SVFResult SVF]))
+           [sound.filter SVF]))
 
 
 (set! *warn-on-reflection* true)
@@ -77,62 +77,62 @@
 
 (deftype Pair [a b])
 
-(defn compute-filters
-  [^Resonator r]
-  (let [stiffness (dsp/interpolate lut-stiffness (.structure r) 256)
-        q (* 500.0 (dsp/interpolate lut-4-decades (.dumping r) 256))
-        brightness-attenuation (m/pow (- 1.0 (.structure r)) 8.0)
-        brightness (* (.brightness r)
-                      (- 1.0 (* 0.2 brightness-attenuation)))
-        q-loss (+ 0.15 (* brightness (- 2.0 brightness) 0.85))
-        q-loss-damping-rate (* (.structure r) (- 2.0 (.structure r)) 0.1)
-        resolution (count (.filters r))
-        ^Pair n (loop [i (int 0)
-                       num-modes (int 0)
-                       harmonic (.frequency r)
-                       stretch-factor 1.0
-                       target []
-                       filters (.filters r)
-                       stiffness stiffness
-                       q-loss q-loss
-                       q q]
-                  (if (not (seq filters))
-                    (Pair. (if (zero? num-modes)
-                             resolution
-                             (ensure-even-resolution+ num-modes))
-                           target)
-                    (let [partial-frequency (min 0.49 (* harmonic stretch-factor))
-                          nq-loss (+ q-loss (* q-loss-damping-rate (- 1.0 q-loss)))]
-                      (recur (inc i)
-                             (if (and (>= partial-frequency 0.49)
-                                      (zero? num-modes))
-                               (inc i)
-                               num-modes)
-                             (+ harmonic (.frequency r))
-                             (+ stretch-factor stiffness)
-                             (conj target (filt/set-fq (first filters) :fast partial-frequency (inc (* partial-frequency q))))
-                             (rest filters)
-                             (if (neg? stiffness)
-                               (* stiffness 0.93)
-                               (* stiffness 0.98))
-                             nq-loss
-                             (* q nq-loss)))))]
-    (Resonator. (.frequency r) (.structure r) (.brightness r) (.dumping r)
-                (.position r) (.a n) (.b n) (.result r))))
+(comment (defn compute-filters
+           [^Resonator r]
+           (let [stiffness (dsp/interpolate lut-stiffness (.structure r) 256)
+                 q (* 500.0 (dsp/interpolate lut-4-decades (.dumping r) 256))
+                 brightness-attenuation (m/pow (- 1.0 (.structure r)) 8.0)
+                 brightness (* (.brightness r)
+                               (- 1.0 (* 0.2 brightness-attenuation)))
+                 q-loss (+ 0.15 (* brightness (- 2.0 brightness) 0.85))
+                 q-loss-damping-rate (* (.structure r) (- 2.0 (.structure r)) 0.1)
+                 resolution (count (.filters r))
+                 ^Pair n (loop [i (int 0)
+                                num-modes (int 0)
+                                harmonic (.frequency r)
+                                stretch-factor 1.0
+                                target []
+                                filters (.filters r)
+                                stiffness stiffness
+                                q-loss q-loss
+                                q q]
+                           (if (not (seq filters))
+                             (Pair. (if (zero? num-modes)
+                                      resolution
+                                      (ensure-even-resolution+ num-modes))
+                                    target)
+                             (let [partial-frequency (min 0.49 (* harmonic stretch-factor))
+                                   nq-loss (+ q-loss (* q-loss-damping-rate (- 1.0 q-loss)))]
+                               (recur (inc i)
+                                      (if (and (>= partial-frequency 0.49)
+                                               (zero? num-modes))
+                                        (inc i)
+                                        num-modes)
+                                      (+ harmonic (.frequency r))
+                                      (+ stretch-factor stiffness)
+                                      (conj target (filt/set-fq (first filters) :fast partial-frequency (inc (* partial-frequency q))))
+                                      (rest filters)
+                                      (if (neg? stiffness)
+                                        (* stiffness 0.93)
+                                        (* stiffness 0.98))
+                                      nq-loss
+                                      (* q nq-loss)))))]
+             (Resonator. (.frequency r) (.structure r) (.brightness r) (.dumping r)
+                         (.position r) (.a n) (.b n) (.result r)))))
 
 
-(defn process
-  [^Resonator r ^double in]
-  (let [amplitudes (dsp/cosine-oscillator :approximate (.position r))
-        input (* 0.125 in)
-        filters (map-indexed (fn [^long idx f]
-                               (if (< idx (.modes r))
-                                 (filt/process f in)
-                                 f)) (.filters r))
-        result (reduce m/fast+ (map (fn [^Vec3 amp ^SVF f]
-                                      (let [^SVFResult res (.result f)]
-                                        (* (+ 0.5 (.y amp))
-                                           (.bp res)))) amplitudes filters))]
-    (Resonator. (.frequency r) (.structure r) (.brightness r) (.dumping r)
-                (.position r) (.modes r) filters result)))
+(comment (defn process
+           [^Resonator r ^double in]
+           (let [amplitudes (dsp/cosine-oscillator :approximate (.position r))
+                 input (* 0.125 in)
+                 filters (map-indexed (fn [^long idx f]
+                                        (if (< idx (.modes r))
+                                          (filt/process f in)
+                                          f)) (.filters r))
+                 result (reduce m/fast+ (map (fn [^Vec3 amp ^SVF f]
+                                               (let [^SVF res (.result f)]
+                                                 (* (+ 0.5 (.y amp))
+                                                    (.bp res)))) amplitudes filters))]
+             (Resonator. (.frequency r) (.structure r) (.brightness r) (.dumping r)
+                         (.position r) (.modes r) filters result))))
 
