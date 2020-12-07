@@ -1,6 +1,8 @@
 # Sound synthesis from the scratch
 
-Waveform based sound synthesis engine. It's a proof of concept helping implementing target synthesizer on STM32 ARM processor.
+Wavetable sound synthesis engine. 
+
+It's a proof of concept helping understaing the topic and eventually implementing similar synthesizer on STM32 ARM chip.
 
 What's included:
 
