@@ -19,6 +19,10 @@
 
 (def level 0.9)
 
+(defn quantize
+  ^long [^double sample]
+  (m/round-even (m/constrain (* ^double level 127.5 sample) -128.0 127.0)))
+
 (defn play
   [^SourceDataLine dl]
   (try
@@ -32,8 +36,7 @@
                                      curr-engine engine]
                                 (if (< idx size)
                                   (let [^Engine new-engine (e/engine curr-engine)]
-                                    (aset ^bytes buffer idx
-                                          (byte (m/round-even (m/constrain (* ^double level 127.5 (.out new-engine)) -128.0 127.0))))
+                                    (aset ^bytes buffer idx (byte (quantize (.out new-engine))))
                                     (recur (inc idx) new-engine))
                                   curr-engine))]
               (.write ^SourceDataLine dl buffer 0 size) ;; feed sound to data line
@@ -64,7 +67,7 @@
 
 (toggle-playing)
 
-(def song (map #(byte (m/round-even (m/constrain (* ^double level 127.5 (.out ^Engine %)) -128.0 127.0))) (iterate e/engine (e/engine))))
+(def song (map #(quantize (.out ^Engine %)) (iterate e/engine (e/engine))))
 
 #_(with-open [w (io/output-stream "song.raw")]
     (doseq [b (take (int (* 20 dsp/RATE)) song)]

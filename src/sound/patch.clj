@@ -7,6 +7,8 @@
             [sound.waveshaper :as ws]
             [sound.dsp :as dsp]))
 
+;; LIVE CODING ENABLED, CHANGE ANY VALUE BELOW
+
 ;; Lost Woods from Zelda - Koji Kondo
 
 ;; sequencer 1 - melody
@@ -32,17 +34,17 @@
 ;; ADSR for filter
 (def adsr-filter-1 (adsr/init-params 0.25 0.5 0.9 0.5))
 
-;; ADSR amount
+;; ADSR filter amount
 (def filter-amount-1 7)
 
 ;; filter frequency (probably ratio pitch / rate - haven't figure it out yet)
-(def filter-freq-1 0.002)
+(def filter-freq-1 0.003)
 
 ;; filter resonance
-(def filter-q-1 7.0)
+(def filter-q-1 10.0)
 
 ;; track level
-(def level-1 0.1)
+(def level-1 0.15)
 
 ;; score
 (def sequence-1 (sr/init-sequence :F3  :A3  :B3  :rst
