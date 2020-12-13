@@ -46,8 +46,7 @@
         (* fractional)
         (+ x0))))
 
-;; (/ (/ 440.0 8) 44100.0)
-(def ^:const ^double a0 0.0012471655328798186)
+(def ^:const ^double a0 (/ (/ 440.0 8) RATE))
 
 (def pitch-ratio-high
   (double-array (map (fn [^double x]
@@ -69,6 +68,8 @@
 (defn note->frequency
   ^double [^double midi-note]
   (* a0 0.25 (semitones->ratio (m/constrain (- midi-note 9.0) -128.0 127.0))))
+
+;;
 
 (defn- cosine-oscillator-init
   [^double frequency]
